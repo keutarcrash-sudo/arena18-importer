@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arena18 × Spotify Playlist Importer</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #1DB954;
+    --black: #0a0a0a;
+    --dark: #111111;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --text: #e8e8e8;
+    --muted: #888;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--black);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 10% 0%, rgba(29,185,84,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .container { max-width: 720px; margin: 0 auto; padding: 48px 24px; position: relative; z-index: 1; }
+  header { text-align: center; margin-bottom: 48px; }
+  .logo-line { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)} }
+  h1 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(42px,8vw,72px); letter-spacing: 3px; line-height:1; color:#fff; }
+  h1 span { color: var(--green); }
+  .subtitle { color: var(--muted); font-size: 14px; letter-spacing: 2px; text-transform: uppercase; margin-top: 12px; }
+
+  .step { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: border-color 0.3s; margin-bottom: 16px; }
+  .step.active { border-color: rgba(29,185,84,0.4); }
+  .step.done { border-color: rgba(29,185,84,0.2); opacity: 0.7; }
+  .step-header { display: flex; align-items: center; gap: 16px; padding: 20px 24px; }
+  .step-num { width: 32px; height: 32px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 16px; color: var(--muted); flex-shrink: 0; transition: all 0.3s; }
+  .step.active .step-num { background: var(--green); color: #000; }
+  .step.done .step-num { background: rgba(29,185,84,0.2); color: var(--green); }
+  .step-title { font-weight: 600; font-size: 15px; }
+  .step-body { padding: 0 24px 24px; }
+
+  label { display: block; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  input[type="text"] { width: 100%; background: var(--black); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s; }
+  input[type="text"]:focus { border-color: var(--green); }
+  input[type="text"]::placeholder { color: #444; }
+
+  .help-text { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+  .help-text a { color: var(--green); text-decoration: none; }
+  .help-text a:hover { text-decoration: underline; }
+
+  .warning-box { background: rgba(255,180,0,0.08); border: 1px solid rgba(255,180,0,0.3); border-radius: 10px; padding: 14px 16px; font-size: 13px; color: #ffcc44; margin-top: 12px; line-height: 1.6; }
+  .warning-box strong { display: block; margin-bottom: 4px; }
+
+  .info-box { background: var(--black); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; font-size: 13px; color: var(--muted); margin-top: 12px; line-height: 1.6; }
+  .info-box code { background: var(--card); color: var(--green); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 12px; word-break: break-all; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 50px; border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 14px; transition: all 0.2s; text-decoration: none; }
+  .btn-green { background: var(--green); color: #000; }
+  .btn-green:hover { background: #1ed760; transform: translateY(-1px); }
+  .btn-green:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-outline:hover { border-color: var(--green); color: var(--green); }
+
+  .dropzone { border: 2px dashed var(--border); border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
+  .dropzone:hover, .dropzone.drag-over { border-color: var(--green); background: rgba(29,185,84,0.04); }
+  .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .dropzone-icon { font-size: 32px; margin-bottom: 8px; }
+  .dropzone-text { font-size: 14px; color: var(--muted); }
+  .dropzone-text strong { color: var(--text); display: block; margin-bottom: 4px; }
+
+  .track-list { background: var(--black); border: 1px solid var(--border); border-radius: 10px; max-height: 200px; overflow-y: auto; margin-top: 12px; }
+  .track-list::-webkit-scrollbar { width: 4px; }
+  .track-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .track-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .track-item:last-child { border-bottom: none; }
+  .track-num { color: var(--muted); font-size: 11px; min-width: 24px; text-align: right; }
+  .track-info { flex: 1; }
+  .track-artist { color: var(--muted); font-size: 11px; }
+
+  .progress-bar-wrap { background: var(--border); border-radius: 50px; height: 6px; overflow: hidden; margin: 16px 0 8px; }
+  .progress-bar { height: 100%; background: var(--green); border-radius: 50px; transition: width 0.4s ease; width: 0%; }
+  .progress-text { font-size: 12px; color: var(--muted); text-align: center; min-height: 18px; }
+
+  .alert { padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-top: 12px; display: none; line-height: 1.5; }
+  .alert.show { display: block; }
+  .alert-success { background: rgba(29,185,84,0.1); border: 1px solid rgba(29,185,84,0.3); color: #1ed760; }
+  .alert-error { background: rgba(255,60,60,0.1); border: 1px solid rgba(255,60,60,0.3); color: #ff6060; }
+  .alert-info { background: rgba(29,185,84,0.05); border: 1px solid var(--border); color: var(--muted); }
+
+  .token-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(29,185,84,0.1); border: 1px solid rgba(29,185,84,0.3); border-radius: 50px; padding: 6px 14px; font-size: 13px; color: var(--green); margin-top: 12px; }
+
+  .row { display: flex; gap: 12px; align-items: flex-end; }
+  .row .field { flex: 1; }
+
+  .result-card { background: rgba(29,185,84,0.06); border: 1px solid rgba(29,185,84,0.25); border-radius: 16px; padding: 24px; text-align: center; display: none; margin-top: 16px; }
+  .result-card.show { display: block; }
+  .result-emoji { font-size: 48px; margin-bottom: 12px; }
+  .result-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--green); letter-spacing: 1px; }
+  .result-sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  @media (max-width: 480px) { .row { flex-direction: column; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo-line">
+      <div class="dot"></div>
+      <div class="dot" style="animation-delay:0.3s"></div>
+      <div class="dot" style="animation-delay:0.6s"></div>
+    </div>
+    <h1>ARENA<span>18</span></h1>
+    <p class="subtitle">Spotify Playlist Importer</p>
+  </header>
+
+  <!-- STEP 1 -->
+  <div class="step active" id="step1">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">Connecter ton compte Spotify</div>
+    </div>
+    <div class="step-body">
+
+      <div class="warning-box">
+        <strong>⚠️ Étape obligatoire avant de te connecter</strong>
+        Dans ton <a href="https://developer.spotify.com/dashboard" target="_blank" style="color:#ffcc44">Spotify Dashboard</a> → ton app → <strong>Edit Settings</strong> → <strong>User Management</strong><br>
+        Ajoute ton adresse email Spotify. Sans ça, la création de playlist sera bloquée (erreur 403).
+      </div>
+
+      <br>
+      <label>Client ID Spotify</label>
+      <input type="text" id="clientId" placeholder="ex: 4a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" />
+
+      <div class="info-box">
+        🔗 URI de redirection à copier dans ton app Spotify :<br>
+        <code id="redirectUriDisplay"></code>
+      </div>
+
+      <div class="help-text" style="margin-top:12px">
+        Pas encore de Client ID ? → <a href="https://developer.spotify.com/dashboard" target="_blank">developer.spotify.com/dashboard</a>
+        → Create App → colle l'URI ci-dessus dans Redirect URIs → coche Web API → Save
+      </div>
+      <br>
+      <button class="btn btn-green" id="btnConnect" onclick="connectSpotify()">🎵 Se connecter à Spotify</button>
+      <div class="token-badge" id="connectedBadge" style="display:none">✓ Connecté : <span id="userName"></span></div>
+      <br><br>
+      <button class="btn btn-outline" id="btnTest" onclick="testSearch()" style="display:none; font-size:12px; padding:8px 16px;">🧪 Tester la recherche (1 titre)</button>
+      <div id="testResult" style="margin-top:10px; font-size:12px; font-family:monospace; color:#aaa; white-space:pre-wrap; background:#111; padding:10px; border-radius:8px; display:none"></div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step" id="step2">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">Charger ton fichier CSV</div>
+    </div>
+    <div class="step-body">
+      <div class="dropzone" id="dropzone">
+        <input type="file" id="csvFile" accept=".csv" onchange="loadCSV(event)">
+        <div class="dropzone-icon">📂</div>
+        <div class="dropzone-text">
+          <strong>Glisse ton CSV ici ou clique pour choisir</strong>
+          Format attendu : colonnes Artist, Track
+        </div>
+      </div>
+      <div id="trackPreview" style="display:none; margin-top:16px;">
+        <label><span id="trackCount">0</span> titres chargés</label>
+        <div class="track-list" id="trackList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step" id="step3">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">Nommer et créer la playlist</div>
+    </div>
+    <div class="step-body">
+      <div class="row">
+        <div class="field">
+          <label>Nom de la playlist</label>
+          <input type="text" id="playlistName" placeholder="ex: Arena18 — 8h-11h Morning" />
+        </div>
+        <button class="btn btn-green" id="btnCreate" onclick="createPlaylist()" disabled>🚀 Créer</button>
+      </div>
+
+      <div class="info-box" style="margin-top:12px; font-size:12px;">
+        ⏱️ L'import est intentionnellement lent (1 titre/seconde) pour respecter les limites de Spotify. 150 titres ≈ 3 minutes. Ne ferme pas l'onglet.
+      </div>
+
+      <div class="progress-bar-wrap" id="progressWrap" style="display:none">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="progress-text" id="progressText"></div>
+      <div class="alert" id="alertBox"></div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="result-card" id="resultCard">
+    <div class="result-emoji">🎉</div>
+    <div class="result-title">Titres trouvés !</div>
+    <div class="result-sub" id="resultSub"></div>
+    <br>
+    <a class="btn btn-green" id="spotifyLink" href="#" target="_blank">Ouvrir la playlist</a>
+    &nbsp;
+    <button class="btn btn-outline" onclick="resetForm()">Nouvelle playlist</button>
+  </div>
+
+  <!-- URI EXPORT -->
+  <div id="uriExportCard" style="display:none; margin-top:16px; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:16px; padding:24px;">
+    <div style="font-family:'Bebas Neue',sans-serif; font-size:22px; color:#1DB954; letter-spacing:1px; margin-bottom:8px;">
+      📋 Colle ces URIs dans Spotify Desktop
+    </div>
+    <div style="font-size:13px; color:#888; margin-bottom:16px; line-height:1.6;">
+      1. Ouvre <strong style="color:#e8e8e8">Spotify Desktop</strong> sur ton ordi<br>
+      2. Ouvre la playlist créée (lien ci-dessus)<br>
+      3. Clique dans la playlist → <strong style="color:#e8e8e8">Ctrl+V</strong> (ou Cmd+V sur Mac)<br>
+      4. Tous les titres s'ajoutent instantanément ✅
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:12px;">
+      <button class="btn btn-green" onclick="copyAllUris()" style="font-size:13px; padding:10px 20px;">
+        📋 Copier toutes les URIs (<span id="uriCount">0</span> titres)
+      </button>
+      <button class="btn btn-outline" onclick="downloadUris()" style="font-size:13px; padding:10px 20px;">
+        💾 Télécharger .txt
+      </button>
+    </div>
+    <textarea id="uriTextarea" readonly
+      style="width:100%; height:120px; background:#0a0a0a; border:1px solid #2a2a2a; border-radius:8px;
+             color:#1DB954; font-family:monospace; font-size:11px; padding:10px; resize:vertical; outline:none;">
+    </textarea>
+    <div id="copyConfirm" style="display:none; color:#1DB954; font-size:12px; margin-top:8px; text-align:center;">
+      ✅ URIs copiées dans le presse-papier !
+    </div>
+  </div>
+
+</div>
+
+<script>
+const REDIRECT_URI = window.location.href.split('?')[0].split('#')[0];
+const SCOPES = 'playlist-modify-public playlist-modify-private user-read-private';
+
+let accessToken = null;
+let tracks = [];
+let userId = null;
+
+document.getElementById('redirectUriDisplay').textContent = REDIRECT_URI;
+
+// ── PKCE ──────────────────────────────────────────────────────────────────────
+function generateCodeVerifier(length = 128) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  const arr = new Uint8Array(length);
+  crypto.getRandomValues(arr);
+  return [...arr].map(b => chars[b % chars.length]).join('');
+}
+
+async function generateCodeChallenge(verifier) {
+  const data = new TextEncoder().encode(verifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+// ── CONNECT ───────────────────────────────────────────────────────────────────
+async function connectSpotify() {
+  const clientId = document.getElementById('clientId').value.trim();
+  if (!clientId) { alert('Entre ton Client ID Spotify !'); return; }
+
+  const verifier = generateCodeVerifier();
+  const challenge = await generateCodeChallenge(verifier);
+  sessionStorage.setItem('pkce_verifier', verifier);
+  sessionStorage.setItem('spotify_client_id', clientId);
+
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: clientId,
+    scope: SCOPES,
+    redirect_uri: REDIRECT_URI,
+    code_challenge_method: 'S256',
+    code_challenge: challenge,
+  });
+
+  window.location = 'https://accounts.spotify.com/authorize?' + params.toString();
+}
+
+// ── CALLBACK ──────────────────────────────────────────────────────────────────
+async function handleCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const error = params.get('error');
+
+  if (error) {
+    showAlert('error', '❌ Autorisation refusée : ' + error);
+    return;
+  }
+  if (!code) return;
+
+  const clientId = sessionStorage.getItem('spotify_client_id');
+  const verifier = sessionStorage.getItem('pkce_verifier');
+  if (!clientId || !verifier) {
+    showAlert('error', '❌ Session expirée. Recommence depuis le début.');
+    return;
+  }
+
+  window.history.replaceState({}, '', window.location.pathname);
+
+  try {
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: REDIRECT_URI,
+        client_id: clientId,
+        code_verifier: verifier,
+      })
+    });
+
+    const tokenData = await res.json();
+    if (!tokenData.access_token) {
+      throw new Error(tokenData.error_description || JSON.stringify(tokenData));
+    }
+
+    accessToken = tokenData.access_token;
+    document.getElementById('clientId').value = clientId;
+
+    // Get user profile
+    const userRes = await fetch('https://api.spotify.com/v1/me', {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    const user = await userRes.json();
+
+    if (!user.id) throw new Error('Impossible de récupérer le profil Spotify');
+
+    userId = user.id;
+    document.getElementById('connectedBadge').style.display = 'inline-flex';
+    document.getElementById('btnTest').style.display = 'inline-flex';
+    document.getElementById('userName').textContent = user.display_name || user.id;
+    document.getElementById('btnConnect').style.display = 'none';
+    document.getElementById('step1').classList.add('done');
+    document.getElementById('step2').classList.add('active');
+    document.getElementById('btnCreate').disabled = false;
+
+  } catch(e) {
+    showAlert('error', '❌ Erreur connexion : ' + e.message);
+  }
+}
+
+// ── LOAD CSV ──────────────────────────────────────────────────────────────────
+function loadCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    tracks = [];
+    const cols = lines[0].split(',').map(c => c.trim().replace(/"/g, '').toLowerCase());
+    const artistIdx = cols.findIndex(c => c.includes('artist'));
+    const trackIdx  = cols.findIndex(c => c.includes('track') || c.includes('title') || c.includes('song'));
+
+    if (artistIdx === -1 || trackIdx === -1) {
+      alert('Colonnes "Artist" et "Track" non trouvées dans le CSV.');
+      return;
+    }
+
+    for (let i = 1; i < lines.length; i++) {
+      const row = parseCSVRow(lines[i]);
+      const artist = row[artistIdx]?.trim();
+      const track  = row[trackIdx]?.trim();
+      if (artist && track) tracks.push({ artist, track });
+    }
+
+    document.getElementById('trackCount').textContent = tracks.length;
+    document.getElementById('trackList').innerHTML = tracks.map((t, i) => `
+      <div class="track-item" id="track-${i}">
+        <span class="track-num">${i+1}</span>
+        <div class="track-info">
+          <div>${t.track}</div>
+          <div class="track-artist">${t.artist}</div>
+        </div>
+        <span id="status-${i}">⬜</span>
+      </div>`).join('');
+
+    document.getElementById('trackPreview').style.display = 'block';
+    document.getElementById('step2').classList.add('done');
+    document.getElementById('step3').classList.add('active');
+    document.getElementById('playlistName').value = file.name.replace('.csv','').replace(/_/g,' ');
+  };
+  reader.readAsText(file);
+}
+
+function parseCSVRow(row) {
+  const result = [];
+  let current = '', inQuotes = false;
+  for (const ch of row) {
+    if (ch === '"') inQuotes = !inQuotes;
+    else if (ch === ',' && !inQuotes) { result.push(current); current = ''; }
+    else current += ch;
+  }
+  result.push(current);
+  return result;
+}
+
+// ── API HELPERS ───────────────────────────────────────────────────────────────
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function spotifyFetch(url, options = {}, retries = 6) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        Authorization: 'Bearer ' + accessToken,
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      }
+    });
+
+    if (res.status === 429) {
+      const waitSec = Math.pow(2, attempt + 1) + 2; // 6s, 10s, 18s...
+      document.getElementById('progressText').textContent = `⏳ Spotify ralentit — pause de ${waitSec}s...`;
+      await sleep(waitSec * 1000);
+      continue;
+    }
+
+    return res;
+  }
+  throw new Error('Trop de tentatives échouées');
+}
+
+// ── CREATE PLAYLIST ───────────────────────────────────────────────────────────
+async function createPlaylist() {
+  if (!accessToken || !userId) { alert('Connecte-toi à Spotify d\'abord !'); return; }
+  if (!tracks.length) { alert('Charge un CSV d\'abord !'); return; }
+
+  const name = document.getElementById('playlistName').value.trim() || 'Arena18 Playlist';
+  const btn = document.getElementById('btnCreate');
+  btn.disabled = true;
+  btn.textContent = '⏳ En cours...';
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('resultCard').classList.remove('show');
+
+  // 1. Créer la playlist
+  showAlert('info', '📋 Création de la playlist...');
+  let playlistId, playlistUrl;
+
+  try {
+    const res = await spotifyFetch(`https://api.spotify.com/v1/me/playlists`, {
+      method: 'POST',
+      body: JSON.stringify({ name, public: true, description: 'Créé via Arena18 Playlist Importer' })
+    });
+
+    const data = await res.json();
+
+    if (!data.id) {
+      const errMsg = data.error ? `${data.error.status} - ${data.error.message}` : JSON.stringify(data);
+      throw new Error(errMsg);
+    }
+
+    playlistId  = data.id;
+    playlistUrl = data.external_urls?.spotify;
+
+  } catch(e) {
+    showAlert('error', `❌ Création playlist échouée : ${e.message}\n\nVérifie que tu as bien ajouté ton email dans User Management de l'app Spotify.`);
+    btn.disabled = false;
+    btn.textContent = '🚀 Créer';
+    return;
+  }
+
+  // 2. Chercher chaque titre
+  showAlert('info', '🔍 Recherche des titres — patience, 1 titre toutes les 2s...');
+  const foundUris = [];
+  const allUris = []; // accumule TOUTES les URIs trouvées
+  let notFound = 0;
+  let errorCount = 0;
+
+  for (let i = 0; i < tracks.length; i++) {
+    const t = tracks[i];
+    const pct = Math.round(((i + 1) / tracks.length) * 100);
+    document.getElementById('progressBar').style.width = pct + '%';
+
+    // Attendre 2s avant chaque recherche
+    
+
+    let found = false;
+    let lastError = '';
+
+    // Retry automatique jusqu'à succès
+    const q = encodeURIComponent(t.track + ' ' + t.artist);
+    let attempts = 0;
+    while (!found && attempts < 20) {
+      attempts++;
+      try {
+        const res = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=3`, {
+          headers: { Authorization: 'Bearer ' + accessToken }
+        });
+
+        if (res.status === 429) {
+          // Attendre et réessayer automatiquement
+          let waitSec = parseInt(res.headers.get('Retry-After') || '30');
+          if (waitSec < 10) waitSec = 10;
+          document.getElementById('progressText').textContent =
+            `⏳ Rate limit — pause ${waitSec}s puis reprise au titre ${i+1}/${tracks.length}...`;
+          await sleep(waitSec * 1000);
+          continue; // réessaie ce même titre
+        } else if (res.ok) {
+          const d = await res.json();
+          const item = d.tracks?.items?.[0];
+          if (item) { foundUris.push(item.uri); allUris.push(item.uri); found = true; }
+          else { lastError = 'introuvable'; }
+          break;
+        } else {
+          lastError = `HTTP ${res.status}`;
+          break;
+        }
+      } catch(e) {
+        lastError = e.message;
+        await sleep(2000);
+      }
+    }
+    if (!found && !lastError) lastError = 'timeout';
+
+    if (found) {
+      document.getElementById('status-' + i).textContent = '✅';
+    } else {
+      document.getElementById('status-' + i).textContent = lastError ? '⚠️' : '❌';
+      if (!lastError) notFound++;
+    }
+
+    document.getElementById('progressText').textContent =
+      `${i+1}/${tracks.length} — ${t.artist} · ${t.track} ${found ? '✅' : lastError ? '⚠️'+lastError : '❌'}`;
+    document.getElementById('track-' + i).scrollIntoView({ block: 'nearest' });
+    await sleep(500);
+
+    // Ajouter par batch de 50
+    if (foundUris.length >= 50) {
+      showAlert('info', `📦 Ajout de ${foundUris.length} titres à la playlist...`);
+      await addTracks(playlistId, foundUris.splice(0, 50));
+      await sleep(1000);
+    }
+  }
+
+  // allUris est déjà complet
+
+  // Résultat
+  const totalFound = tracks.length - notFound - errorCount;
+  document.getElementById('progressBar').style.width = '100%';
+  document.getElementById('progressText').textContent = `✅ ${totalFound} titres trouvés !`;
+  showAlert('success', `✅ ${totalFound} titres trouvés sur Spotify !`);
+
+  document.getElementById('resultCard').classList.add('show');
+  document.getElementById('resultSub').textContent = `${totalFound} trouvés · ${notFound} introuvables · ${errorCount} erreurs`;
+  document.getElementById('spotifyLink').href = playlistUrl;
+  btn.textContent = '✅ Fait !';
+
+  // Afficher les URIs à copier-coller
+  if (allUris.length > 0) {
+    document.getElementById('uriExportCard').style.display = 'block';
+    document.getElementById('uriCount').textContent = allUris.length;
+    document.getElementById('uriTextarea').value = allUris.join('\n');
+    window._allUris = allUris;
+    console.log('Total URIs collectées:', allUris.length);
+    window._playlistName = name;
+    // Scroll vers le bas
+    setTimeout(() => document.getElementById('uriExportCard').scrollIntoView({ behavior: 'smooth' }), 300);
+  }
+}
+
+async function addTracks(playlistId, uris) {
+  console.log('addTracks called — playlistId:', playlistId, '— uris count:', uris.length);
+  console.log('token present:', !!accessToken);
+  
+  try {
+    // Utiliser fetch directement pour éviter tout problème avec spotifyFetch
+    const res = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ uris: uris })
+    });
+
+    console.log('addTracks HTTP status:', res.status);
+    const text = await res.text();
+    console.log('addTracks raw response:', text);
+
+    if (!res.ok) {
+      showAlert('error', `❌ Erreur ${res.status} ajout titres : ${text.substring(0, 200)}`);
+      return false;
+    }
+    return true;
+  } catch(e) {
+    console.error('Erreur addTracks:', e);
+    showAlert('error', '❌ Erreur ajout titres : ' + e.message);
+    return false;
+  }
+}
+
+function showAlert(type, msg) {
+  const box = document.getElementById('alertBox');
+  box.className = 'alert show alert-' + type;
+  box.textContent = msg;
+}
+
+function resetForm() {
+  tracks = [];
+  ['trackPreview','progressWrap'].forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById('trackList').innerHTML = '';
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('progressText').textContent = '';
+  document.getElementById('alertBox').className = 'alert';
+  document.getElementById('resultCard').classList.remove('show');
+  document.getElementById('btnCreate').disabled = false;
+  document.getElementById('btnCreate').textContent = '🚀 Créer';
+  document.getElementById('uriExportCard').style.display = 'none';
+  document.getElementById('uriTextarea').value = '';
+  document.getElementById('csvFile').value = '';
+  document.getElementById('step2').classList.remove('done');
+  document.getElementById('step3').classList.remove('active');
+}
+
+// ── TEST SEARCH ──────────────────────────────────────────────────────────────
+async function testSearch() {
+  const out = document.getElementById('testResult');
+  out.style.display = 'block';
+  out.textContent = '🔍 Test en cours...';
+
+  try {
+    const q = encodeURIComponent('Billie Jean Michael Jackson');
+    const res = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=1`, {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+
+    out.textContent += '\nHTTP status: ' + res.status;
+
+    if (res.status === 429) {
+      out.textContent += '\n❌ RATE LIMITED — Spotify bloque les recherches';
+      return;
+    }
+
+    const data = await res.json();
+    out.textContent += '\n' + JSON.stringify(data, null, 2).substring(0, 500);
+
+    const item = data.tracks?.items?.[0];
+    if (item) {
+      out.textContent += '\n\n✅ Recherche OK ! Trouvé : ' + item.name + ' — ' + item.artists[0].name;
+    } else {
+      out.textContent += '\n\n❌ Aucun résultat — data: ' + JSON.stringify(data).substring(0, 200);
+    }
+  } catch(e) {
+    out.textContent += '\n❌ Erreur: ' + e.message;
+  }
+}
+
+// ── URI EXPORT ───────────────────────────────────────────────────────────────
+function copyAllUris() {
+  const uris = (window._allUris || []).join('\n');
+  navigator.clipboard.writeText(uris).then(() => {
+    document.getElementById('copyConfirm').style.display = 'block';
+    setTimeout(() => document.getElementById('copyConfirm').style.display = 'none', 3000);
+  }).catch(() => {
+    // Fallback
+    const ta = document.getElementById('uriTextarea');
+    ta.select();
+    document.execCommand('copy');
+    document.getElementById('copyConfirm').style.display = 'block';
+    setTimeout(() => document.getElementById('copyConfirm').style.display = 'none', 3000);
+  });
+}
+
+function downloadUris() {
+  const uris = (window._allUris || []).join('\n');
+  const name = (window._playlistName || 'playlist').replace(/[^a-zA-Z0-9\-_ ]/g, '');
+  const blob = new Blob([uris], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name + '_uris.txt';
+  a.click();
+}
+
+// Init
+handleCallback();
+
+// Drag & drop
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) loadCSV({ target: { files: [file] } });
+});
+</script>
+</body>
+</html>
