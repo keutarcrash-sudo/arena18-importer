@@ -543,7 +543,7 @@ async function createPlaylist() {
     document.getElementById('progressText').textContent =
       `${i+1}/${tracks.length} — ${t.artist} · ${t.track} ${found ? '✅' : lastError ? '⚠️'+lastError : '❌'}`;
     document.getElementById('track-' + i).scrollIntoView({ block: 'nearest' });
-    await sleep(500);
+    await sleep(1000);
 
     // Ajouter par batch de 50
     if (foundUris.length >= 50) {
