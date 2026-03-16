@@ -511,12 +511,10 @@ async function createPlaylist() {
         });
 
         if (res.status === 429) {
-          // Attendre et réessayer automatiquement
-          let waitSec = parseInt(res.headers.get('Retry-After') || '30');
-          if (waitSec < 10) waitSec = 10;
+          // Attendre 60s fixe et réessayer
           document.getElementById('progressText').textContent =
-            `⏳ Rate limit — pause ${waitSec}s puis reprise au titre ${i+1}/${tracks.length}...`;
-          await sleep(waitSec * 1000);
+            `⏳ Rate limit Spotify — pause 60s puis reprise au titre ${i+1}/${tracks.length}... (ne ferme pas l'onglet)`;
+          await sleep(60000);
           continue; // réessaie ce même titre
         } else if (res.ok) {
           const d = await res.json();
